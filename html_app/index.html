@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.3.1/css/bootstrap.min.css">
+    <script src="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0/js/bootstrap.min.js" integrity="sha384-JZR6Spejh4U02d8jOt6vLEHfe/JQGiRRSQQxSfFWpi1MquVdAyjUar5+76PVCmYl" crossorigin="anonymous"></script>
+
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.4.0/jquery.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.14.7/umd/popper.min.js"></script>
+    <script src="https://maxcdn.bootstrapcdn.com/bootstrap/4.3.1/js/bootstrap.min.js"></script>
+    <script src="https://ajax.googleapis.com/ajax/libs/angularjs/1.6.9/angular.min.js"></script>
+    <script src="https://sdk.amazonaws.com/js/aws-sdk-2.283.1.min.js"></script>
+    <script src="./app.js"></script>
+    <script>
+
+    $(document).ready(function(){
+      $('[data-toggle="popover"]').popover();
+      });
+       //listBucket();
+    </script>
+  </head>
+  <body>
+
+    <div ng-app="resumeWordCloud" ng-controller="myCtrl">
+      <div class="alert alert-success fade show" ng-show="showAlert" role="alert">
+        <strong>Message!</strong> {{alertMessage.message}}
+
+      </div>
+
+      <div>
+
+        <div style="position:relative;">
+          <a class='btn btn-primary' href='javascript:;'>
+              Choose File to upload...
+              <input id="myresume" type="file" style='position:absolute;z-index:2;top:0;left:0;filter: alpha(opacity=0);-ms-filter:"progid:DXImageTransform.Microsoft.Alpha(Opacity=0)";opacity:0;background-color:transparent;color:transparent;' name="file_source" size="40"  onchange='$("#upload-file-info").html($(this).val());'>
+          </a>
+          &nbsp;
+          <span class='label label-info' id="upload-file-info"></span>
+          <button  type="button" ng-click = "uploadFile()" class="btn btn-primary">Upload resume</button>
+        </div>
+        <!--<span class="btn btn-default btn-file">
+            <input type = "file" id="myresume" file-model = "myFile"/>
+          </span>-->
+
+
+      </div>
+      <hr>
+
+
+
+
+    <!-- Start of Card Deck Layout -->
+
+    <label>Search: <input ng-model="searchText"></label>
+    <label>Search by JD(regex): <input ng-model="searchTextJD"></label>
+    <button type="button" class="btn btn-warning" data-toggle="popover"
+      data-trigger="focus" title="Popover Header"
+      data-content="OR operation shoud be delimited by pipe(|) EG: java|python ||| AND operation can be use as : (?=.*java)(?=.*python)
+        "><span class="glyphicon glyphicon-question-sign"></span>Tips</button>
+    <hr>
+
+    <div class="row">
+        <div class="col-sm-6 col-md-4 col-lg-3" ng-repeat="x in dispData  | toArray | orderBy: '-LastModified' | filtertextRegex:searchTextJD | filter:searchText">
+          <div class="card">
+            <img class="card-img-top" ng-src="{{bucketUrl}}{{imageData[x.KeyID].Key}}" alt="Click Refresh button if image is not loaded">
+            <div class="card-body">
+            <h4 class="card-title">{{x.KeyID}}</h4>
+            <p class="card-text"> Uploaded on : {{x.LastModified | date:'medium'}}</p>
+            </div>
+            <div class="card-footer">
+            <small class="text-muted"><a href="{{bucketUrl}}{{x.Key}}" class="card-link">Download Profile</a></small>
+            </div>
+            </div>
+        </div>
+
+    </div>
+
+  </div>
+
+
+
+  </body>
+</html>

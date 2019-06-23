@@ -1,0 +1,121 @@
+{
+  "service": {
+    "service": "python-tesseract-layers",
+    "serviceObject": {
+      "name": "python-tesseract-layers"
+    },
+    "provider": {
+      "stage": "dev",
+      "region": "us-east-1",
+      "variableSyntax": "\\${([ ~:a-zA-Z0-9._@'\",\\-\\/\\(\\)*]+?)}",
+      "name": "aws",
+      "environment": {
+        "REGION": "us-east-1",
+        "TESSDATA_PREFIX": "tessdata"
+      },
+      "versionFunctions": true,
+      "remoteFunctionData": null,
+      "compiledCloudFormationTemplate": {
+        "AWSTemplateFormatVersion": "2010-09-09",
+        "Description": "The AWS CloudFormation template for this Serverless application",
+        "Resources": {
+          "ServerlessDeploymentBucket": {
+            "Type": "AWS::S3::Bucket",
+            "Properties": {
+              "BucketEncryption": {
+                "ServerSideEncryptionConfiguration": [
+                  {
+                    "ServerSideEncryptionByDefault": {
+                      "SSEAlgorithm": "AES256"
+                    }
+                  }
+                ]
+              }
+            }
+          },
+          "TesseractPython36LambdaLayer": {
+            "Type": "AWS::Lambda::LayerVersion",
+            "Properties": {
+              "Content": {
+                "S3Bucket": {
+                  "Ref": "ServerlessDeploymentBucket"
+                },
+                "S3Key": "serverless/python-tesseract-layers/dev/1561019786122-2019-06-20T08:36:26.122Z/tesseractPython36.zip"
+              },
+              "LayerName": "tesseractPython36",
+              "Description": "A Layer to support tesseract in Python 3.6 Lambda functions",
+              "CompatibleRuntimes": [
+                "python3.6"
+              ]
+            }
+          }
+        },
+        "Outputs": {
+          "ServerlessDeploymentBucketName": {
+            "Value": {
+              "Ref": "ServerlessDeploymentBucket"
+            }
+          },
+          "TesseractPython36LambdaLayerQualifiedArn": {
+            "Description": "Current Lambda layer version",
+            "Value": {
+              "Ref": "TesseractPython36LambdaLayer"
+            }
+          }
+        }
+      },
+      "coreCloudFormationTemplate": {
+        "AWSTemplateFormatVersion": "2010-09-09",
+        "Description": "The AWS CloudFormation template for this Serverless application",
+        "Resources": {
+          "ServerlessDeploymentBucket": {
+            "Type": "AWS::S3::Bucket",
+            "Properties": {
+              "BucketEncryption": {
+                "ServerSideEncryptionConfiguration": [
+                  {
+                    "ServerSideEncryptionByDefault": {
+                      "SSEAlgorithm": "AES256"
+                    }
+                  }
+                ]
+              }
+            }
+          }
+        },
+        "Outputs": {
+          "ServerlessDeploymentBucketName": {
+            "Value": {
+              "Ref": "ServerlessDeploymentBucket"
+            }
+          }
+        }
+      }
+    },
+    "custom": {
+      "default_stage": "dev",
+      "stage": "dev",
+      "tessdata": "tessdata",
+      "region": "us-east-1"
+    },
+    "pluginsData": {},
+    "functions": {},
+    "serviceFilename": "serverless.yml",
+    "layers": {
+      "tesseractPython36": {
+        "path": "layer",
+        "description": "A Layer to support tesseract in Python 3.6 Lambda functions",
+        "compatibleRuntimes": [
+          "python3.6"
+        ],
+        "package": {
+          "artifact": "/Users/ruhul/Downloads/lambda-ocr-master/tesseract-layer/.serverless/tesseractPython36.zip"
+        }
+      }
+    }
+  },
+  "package": {
+    "artifactDirectoryName": "serverless/python-tesseract-layers/dev/1561019786122-2019-06-20T08:36:26.122Z",
+    "artifact": ""
+  }
+}
