@@ -186,34 +186,59 @@ PARSE_FUNCS = {
 
 def handle(event, context):
     global logger
-    print("I am here")
-    document_path = LAMBDA_TASK_ROOT+"/ruhul_profile.pdf"
+   
 
-    _, ext = os.path.splitext(document_path)  # get format from extension
+    s3 = boto3.resource('s3')
+    bucket = event['Records'][0]['s3']['bucket']['name']
+    key = event['Records'][0]['s3']['object']['key']
+    print("New file : {} uploaded in bucket: {} ".format(key, bucket))
+    tmpfile = '/tmp/'+key[7:];
+    s3.meta.client.download_file(bucket, key, tmpfile)
+    print('I am done downloading the file in tmp folder ' + tmpfile)
+    _, ext = os.path.splitext(tmpfile)  # get format from extension
     ext = ext.lower()
-    print(ext)
     extract_func = PARSE_FUNCS.get(ext)
+    print("Extraction function identified as")
     print(extract_func)
     if extract_func is None:
-        print("unsupported")
+        print("No function identified. Unsupported file type")
     #end if
 
-    fallback_to_ocr = False
     textractor_results = {}
-    
-       
     try:
-        text = extract_func(document_path, event, context)
+        text = extract_func(tmpfile, event, context)
         textractor_results = dict(method=extract_func.__name__, size=len(text), success=True)
-        if len(text) == 0: print('<{}> does not contain any content.'.format(document_path))
+        if len(text) == 0: print('<{}> does not contain any content.'.format(tmpfile))
         #end if
-        print(text)
-
+        print("text extracted successfully now generating wordcloud image")
+        stoptextfile = LAMBDA_TASK_ROOT+"/stop-words.txt"
+        stopwords = set(STOPWORDS) 
+        new_words =open(stoptextfile).read().split()
+        new_stopwords=stopwords.union(new_words)
+        wordcloud = WordCloud(max_font_size=50, max_words=100, stopwords = new_stopwords, background_color="white").generate(text)
+        
+        plt.figure()
+        plt.imshow(wordcloud, interpolation="bilinear")
+        plt.axis("off")
+        imageFile= key+".png"
+        imageFile = imageFile[7:]
+        wordcloud.to_file("/tmp/"+imageFile)
+        print("Wordcloud file created {}".format(imageFile))
+        data = open('/tmp/'+imageFile, 'rb')
+        imageFile = "image/"+imageFile
+        s3.Bucket('resume-bucket-ruhul').put_object(ACL='public-read',Key=imageFile, Body=data)
+        print("WordCloud image uploaded succesfully " + imageFile)
+        dynamodb = boto3.resource('dynamodb')
+        table = dynamodb.Table('resumewordcloudTable')
+        print(table)
+        wordclouddata =  wordcloud.words_
+        for k, v in wordclouddata.items():
+            wordclouddata[k] = str(v)
+        table.put_item(Item= {'name':key,'resumekey': key,'resumetext': wordclouddata  , 'imagekey': imageFile})
+        print("data updated in dynamo table")
+       
     except Exception as e:
-        print('Extraction exception for <{}>'.format(document_path))
+        print('Extraction exception for <{}>'.format(tmpfile))
     
 #end def
-handle("","")
-
-
 
