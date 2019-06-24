@@ -1,4 +1,4 @@
-service: ocr-test
+service: resume-word-cloud
 
 package:
   exclude:
@@ -22,7 +22,7 @@ custom:
     fileName: requirements/requirements.in
     zip: false
     dockerizePip: true
-  app_acronym: ocr-test
+  app_acronym: resume-app
   default_stage: dev
   tesseract-layer:
     name: tesseractPython36
@@ -49,12 +49,14 @@ provider:
 functions:
   ocr-test:
     handler: lambda_function.handle
-    name: ${self:custom.stack_name}-ocr-test
+    name: ${self:custom.stack_name}-word-cloud
     timeout: 60
     events:
       - http:
           method: post
-          path: /ocr
+          path: /wc
           cors: true
     layers:
-      - "arn:aws:lambda:us-east-1:411797132158:layer:tesseractPython36_1:1"
+      - "arn:aws:lambda:us-east-1:411797132158:layer:tesseractPython36_1:3"
+      - "arn:aws:lambda:us-east-1:411797132158:layer:wordCloudPython36_1:2"
+

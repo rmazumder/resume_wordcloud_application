@@ -215,7 +215,7 @@ def handle(event, context):
         stopwords = set(STOPWORDS) 
         new_words =open(stoptextfile).read().split()
         new_stopwords=stopwords.union(new_words)
-        wordcloud = WordCloud(max_font_size=50, max_words=100, stopwords = new_stopwords, background_color="white").generate(text)
+        wordcloud = WordCloud(max_font_size=50,  stopwords = new_stopwords, background_color="white").generate(text)
         
         plt.figure()
         plt.imshow(wordcloud, interpolation="bilinear")
