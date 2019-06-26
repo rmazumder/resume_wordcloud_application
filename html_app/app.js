@@ -27,7 +27,7 @@ app.filter("filtertextRegex", function() {
 app.controller("myCtrl", function($scope, $http, $timeout, $filter) {
     $scope.albumBucketName = 'testwc-ruhul';
     var bucketRegion = 'us-east-1';
-    var IdentityPoolId = 'us-east-1:1e80c2ea-956a-4a59-a755-cd4aec0ee118';
+    var IdentityPoolId = 'XXXX';
     $scope.showAlert = true;
     $scope.alertMessage = {
         message: 'Welcome to word cloud resume application'
