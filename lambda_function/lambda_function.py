@@ -22,6 +22,7 @@ import sys, getopt
 from PIL import Image
 from wordcloud import WordCloud, STOPWORDS, ImageColorGenerator
 import matplotlib.pyplot as plt
+from urllib.parse import unquote_plus
 
 from utils import get_subprocess_output
 
@@ -102,7 +103,7 @@ def doc_to_text(document_path, event, context):
 def docx_to_text(document_path, event, context):
     global logger
     print("before import")
-    
+
     print("after import")
     try:
         doc = Document(document_path)
@@ -181,16 +182,26 @@ PARSE_FUNCS = {
     '.png': img_to_text,
     '.jpg': img_to_text,
     '.jpeg': img_to_text
-   
+
 }
+
+def extractEmail(text):
+    regexEmail = '\S+@\S+'
+    emails = re.findall(regexEmail, text)
+    return emails
+
+
+def extractPhoneNumber(text):
+    regexPhone = r'^\D*(\d{3})\D*(\d{3})\D*(\d{4})\D*(\d*)$'
+    phones = re.findall(regexPhone, text)
+    return phones
 
 def handle(event, context):
     global logger
-   
-
     s3 = boto3.resource('s3')
-    bucket = event['Records'][0]['s3']['bucket']['name']
-    key = event['Records'][0]['s3']['object']['key']
+    bucket =event['Records'][0]['s3']['bucket']['name']
+    key =event['Records'][0]['s3']['object']['key']
+    key = unquote_plus(key)
     print("New file : {} uploaded in bucket: {} ".format(key, bucket))
     tmpfile = '/tmp/'+key[7:];
     s3.meta.client.download_file(bucket, key, tmpfile)
@@ -212,11 +223,10 @@ def handle(event, context):
         #end if
         print("text extracted successfully now generating wordcloud image")
         stoptextfile = LAMBDA_TASK_ROOT+"/stop-words.txt"
-        stopwords = set(STOPWORDS) 
+        stopwords = set(STOPWORDS)
         new_words =open(stoptextfile).read().split()
         new_stopwords=stopwords.union(new_words)
         wordcloud = WordCloud(max_font_size=50,  stopwords = new_stopwords, background_color="white").generate(text)
-        
         plt.figure()
         plt.imshow(wordcloud, interpolation="bilinear")
         plt.axis("off")
@@ -226,7 +236,7 @@ def handle(event, context):
         print("Wordcloud file created {}".format(imageFile))
         data = open('/tmp/'+imageFile, 'rb')
         imageFile = "image/"+imageFile
-        s3.Bucket('resume-bucket-ruhul').put_object(ACL='public-read',Key=imageFile, Body=data)
+        s3.Bucket(bucket).put_object(ACL='public-read',Key=imageFile, Body=data)
         print("WordCloud image uploaded succesfully " + imageFile)
         dynamodb = boto3.resource('dynamodb')
         table = dynamodb.Table('resumewordcloudTable')
@@ -234,11 +244,13 @@ def handle(event, context):
         wordclouddata =  wordcloud.words_
         for k, v in wordclouddata.items():
             wordclouddata[k] = str(v)
-        table.put_item(Item= {'name':key,'resumekey': key,'resumetext': wordclouddata  , 'imagekey': imageFile})
-        print("data updated in dynamo table")
-       
-    except Exception as e:
-        print('Extraction exception for <{}>'.format(tmpfile))
-    
-#end def
+        email = ''.join(extractEmail(text))
+        phone = ''.join(extractPhoneNumber(text))
 
+        table.put_item(Item= {'name':key,'resumekey': key,'resumetext': wordclouddata  , 'imagekey': imageFile, 'email':"-"+email, 'phone':'-'+phone})
+        print("data updated in dynamo table")
+
+    except Exception as e:
+        print('Extraction exception {} for <{}>'.format(tmpfile, e))
+
+#end def

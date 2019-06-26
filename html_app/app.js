@@ -1,6 +1,4 @@
-var albumBucketName = 'resume-bucket-ruhul';
-var bucketRegion = 'us-east-1';
-var IdentityPoolId = '--IDENTITY_POOL_ID';
+
 
 
 var app = angular.module("resumeWordCloud", []);
@@ -27,6 +25,9 @@ app.filter("filtertextRegex", function() {
     };
 });
 app.controller("myCtrl", function($scope, $http, $timeout, $filter) {
+    $scope.albumBucketName = 'testwc-ruhul';
+    var bucketRegion = 'us-east-1';
+    var IdentityPoolId = 'us-east-1:1e80c2ea-956a-4a59-a755-cd4aec0ee118';
     $scope.showAlert = true;
     $scope.alertMessage = {
         message: 'Welcome to word cloud resume application'
@@ -49,7 +50,7 @@ app.controller("myCtrl", function($scope, $http, $timeout, $filter) {
     var s3 = new AWS.S3({
         apiVersion: '2006-03-01',
         params: {
-            Bucket: albumBucketName
+            Bucket: $scope.albumBucketName
         }
     });
 
@@ -91,7 +92,7 @@ app.controller("myCtrl", function($scope, $http, $timeout, $filter) {
             if (err) console.log(err, err.stack); // an error occurred
             else {
                 var href = this.request.httpRequest.endpoint.href;
-                $scope.bucketUrl = href + albumBucketName + '/';
+                $scope.bucketUrl = href + $scope.albumBucketName + '/';
                 for (i = 0; i < data.Contents.length; i++) {
                     key = data.Contents[i]["Key"]
                     if (key === "image/")
@@ -162,7 +163,7 @@ app.controller("myCtrl", function($scope, $http, $timeout, $filter) {
                     S: 'resume'
                 }
             },
-            ProjectionExpression: 'resumekey, resumetext, imagekey',
+            ProjectionExpression: 'resumekey, resumetext, imagekey, email, phone',
             FilterExpression: 'begins_with (resumekey, :topic)',
             TableName: 'resumewordcloudTable'
         };
@@ -178,10 +179,12 @@ app.controller("myCtrl", function($scope, $http, $timeout, $filter) {
                     angular.forEach(element.resumetext.M, function(value, key) {
                         textString = textString + " " + key;
                     });
-                    $scope.dispData[key]['textData'] = textString;
-
+                    if($scope.dispData[key]){
+                      $scope.dispData[key]['textData'] = textString;
+                      $scope.dispData[key]['email'] = element.email.S;
+                      $scope.dispData[key]['phone'] = element.phone.S;
+                    }
                 });
-                console.log($scope.dispData)
                 $scope.$apply();
 
             }

@@ -62,11 +62,13 @@
 
     <div class="row">
         <div class="col-sm-6 col-md-4 col-lg-3" ng-repeat="x in dispData  | toArray | orderBy: '-LastModified' | filtertextRegex:searchTextJD | filter:searchText">
-          <div class="card">
+          <div class="card" >
             <img class="card-img-top" ng-src="{{bucketUrl}}{{imageData[x.KeyID].Key}}" alt="Click Refresh button if image is not loaded">
             <div class="card-body">
-            <h4 class="card-title">{{x.KeyID}}</h4>
-            <p class="card-text"> Uploaded on : {{x.LastModified | date:'medium'}}</p>
+              <b class="card-title">{{x.KeyID}}</b>
+              <p class="card-title"> Uploaded on : {{x.LastModified | date:'medium'}}</p>
+              <p class="card-title"> Mobile: {{x.phone}}</p>
+              <p class="card-title"> Email: {{x.email}}</p>
             </div>
             <div class="card-footer">
             <small class="text-muted"><a href="{{bucketUrl}}{{x.Key}}" class="card-link">Download Profile</a></small>
