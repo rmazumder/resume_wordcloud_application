@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.3.1/css/bootstrap.min.css">
     <script src="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0/js/bootstrap.min.js" integrity="sha384-JZR6Spejh4U02d8jOt6vLEHfe/JQGiRRSQQxSfFWpi1MquVdAyjUar5+76PVCmYl" crossorigin="anonymous"></script>
+    <link rel='stylesheet' href='https://use.fontawesome.com/releases/v5.7.0/css/all.css' integrity='sha384-lZN37f5QGtY3VHgisS14W3ExzMWZxybE1SJSEsQp9S+oqd12jhcu+A56Ebc1zFSJ' crossorigin='anonymous'>
 
     <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.4.0/jquery.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.14.7/umd/popper.min.js"></script>
@@ -23,22 +24,92 @@
   <body>
 
     <div ng-app="resumeWordCloud" ng-controller="myCtrl">
-      <div class="alert alert-success fade show" ng-show="showAlert" role="alert">
-        <strong>Message!</strong> {{alertMessage.message}}
 
+      <div class="alert alert-success fade show" ng-show="showAlert" role="alert">
+        <strong>Message!</strong> {{alertMessage.message}} <i class="fa fa-spinner fa-spin" style="font-size:24px" ng-if="alertMessage.showspinner"></i>
       </div>
 
+
+
+      <div class="row">
+        <div class="col-md-6">
+          <div style="position:relative;">
+            <a class='btn btn-primary' href='javascript:;'>
+                Choose File to upload...
+                <input id="myresume" type="file" style='position:absolute;z-index:2;top:0;left:0;filter: alpha(opacity=0);-ms-filter:"progid:DXImageTransform.Microsoft.Alpha(Opacity=0)";opacity:0;background-color:transparent;color:transparent;' name="file_source" size="40"  onchange='$("#upload-file-info").html($(this).val());'>
+            </a>
+            &nbsp;
+            <span class='label label-info' id="upload-file-info"></span>
+            <button  type="button" ng-click = "uploadFile()" class="btn btn-primary">Upload resume</button>
+
+
+          </div>
+        </div>
+        <div class="col-md-6 text-right">
+          <span class="alert alert-danger" role="alert" id="jdalert" ng-if="showjdalert">
+                Please select a JD from the list and proceed! <i style='font-size:20px' class='fas'>&#xf35a;</i>
+          </span>
+          <span>
+              <select ng-change="showjdalert=false" id="jdselect" ng-model="selectedjd" ng-options="item.name for item in jdlist"></select>
+          </span>
+          <span><button type="button" class="btn btn-primary" data-toggle="modal" data-target="#jdmodal">
+              create New JD
+              </button>
+              <!-- Modal -->
+                  <div class="modal fade " id="jdmodal" tabindex="-1" role="dialog" aria-labelledby="exampleModalLabel" aria-hidden="true">
+                    <div class="modal-dialog modal-lg" role="document">
+                      <div class="modal-content">
+                        <div class="modal-header">
+                          <h5 class="modal-title" id="exampleModalLabel">Create a new Job Description</h5>
+                          <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                            <span aria-hidden="true">&times;</span>
+                          </button>
+                        </div>
+                        <div class="modal-body">
+                          <table class="table table-striped table-bordered">
+                            <thead>
+                              <tr>
+                                <th scope="col">Name</th>
+                                <th scope="col">Text</th>
+                                <th scope="col">WordCloud</th>
+                                <th scope="col"></th>
+                              </tr>
+                            </thead>
+                            <tbody >
+                              <tr ng-repeat="(x,y) in jdlist" ng-if="y.name!='-all-'">
+                                <td>{{y.name}}</td>
+                                <td>{{y.text}}</td>
+                                <td><img width="200" ng-src="{{bucketUrl}}{{y.image}}"> </td>
+                                <td> <button class="btn btn-default" ng-click="deletejd(y.name)"> <i style="font-size:15px" class="fa">&#xf1f8;</i>
+                                  </button></td>
+                              </tr>
+                              <tr class="text-left">
+                                <td colspan=4><label>JD Name: <input ng-model="jdName"></label></td>
+                              </tr>
+                              <tr class="text-left">
+                                <td colspan="4"><input type="file" id="jdfile" name="jdfile" accept=".txt"/></td>
+                              </tr>
+
+                            </tbody>
+                          </table>
+
+
+
+                        </div>
+                        <div class="modal-footer">
+                          <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
+                          <button type="button" class="btn btn-primary" ng-click= "createjd()">Create JD</button>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+            </span>
+        </div>
+      </div>
       <div>
 
-        <div style="position:relative;">
-          <a class='btn btn-primary' href='javascript:;'>
-              Choose File to upload...
-              <input id="myresume" type="file" style='position:absolute;z-index:2;top:0;left:0;filter: alpha(opacity=0);-ms-filter:"progid:DXImageTransform.Microsoft.Alpha(Opacity=0)";opacity:0;background-color:transparent;color:transparent;' name="file_source" size="40"  onchange='$("#upload-file-info").html($(this).val());'>
-          </a>
-          &nbsp;
-          <span class='label label-info' id="upload-file-info"></span>
-          <button  type="button" ng-click = "uploadFile()" class="btn btn-primary">Upload resume</button>
-        </div>
+
         <!--<span class="btn btn-default btn-file">
             <input type = "file" id="myresume" file-model = "myFile"/>
           </span>-->
@@ -51,27 +122,36 @@
 
 
     <!-- Start of Card Deck Layout -->
-
-    <label>Search: <input ng-model="searchText"></label>
+    <label>Search: <input ng-model="searchText.$"></label>
     <label>Search by JD(regex): <input ng-model="searchTextJD"></label>
     <button type="button" class="btn btn-warning" data-toggle="popover"
-      data-trigger="focus" title="Popover Header"
+      data-trigger="focus" title="Use regex to search"
       data-content="OR operation shoud be delimited by pipe(|) EG: java|python ||| AND operation can be use as : (?=.*java)(?=.*python)
-        "><span class="glyphicon glyphicon-question-sign"></span>Tips</button>
+        "><span class="glyphicon glyphicon-question-sign"></span>Tips</button> <button class="btn btn-primary" ng-click="listResumeBucket()"><span class="glyphicon glyphicon-refresh"></span> <i style="font-size:24px" class="fa">&#xf021;</i>
+</button>
+
     <hr>
 
     <div class="row">
-        <div class="col-sm-6 col-md-4 col-lg-3" ng-repeat="x in dispData  | toArray | orderBy: '-LastModified' | filtertextRegex:searchTextJD | filter:searchText">
+        <div class="col-sm-6 col-md-4 col-lg-3" ng-repeat="x in dispData  | toArray | orderBy: '-LastModified' | filtertextRegex:searchTextJD | filter:searchText | filter:selectedjd.value">
           <div class="card" >
             <img class="card-img-top" ng-src="{{bucketUrl}}{{imageData[x.KeyID].Key}}" alt="Click Refresh button if image is not loaded">
             <div class="card-body">
-              <b class="card-title">{{x.KeyID}}</b>
+              <b class="card-title ">{{x.KeyID}}</b>
+              <button type="button" class="btn btn-info float-right">
+                {{x.tag}} <span class="badge badge-light">{{x.score | number:2}}</span>
+                <span class="sr-only">unread messages</span>
+              </button>
+              <!--<span class="badge badge-success float-right">{{x.tag}} {{x.score | number:2}}</span>-->
               <p class="card-title"> Uploaded on : {{x.LastModified | date:'medium'}}</p>
               <p class="card-title"> Mobile: {{x.phone}}</p>
               <p class="card-title"> Email: {{x.email}}</p>
             </div>
             <div class="card-footer">
             <small class="text-muted"><a href="{{bucketUrl}}{{x.Key}}" class="card-link">Download Profile</a></small>
+            <button type="button" class="close" aria-label="Close" ng-click="deleteresume(x.Key, x.KeyID)">
+              <span aria-hidden="true"> <i style='font-size:20px' class='fas'>&#xf1f8;	</i></span>
+            </button>
             </div>
             </div>
         </div>

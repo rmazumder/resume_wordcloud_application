@@ -12,6 +12,7 @@ from docx.text.paragraph import Paragraph
 from docx.oxml.table import CT_Tbl
 from docx.oxml.text.paragraph import CT_P
 import boto3
+import math
 from pdfminer.pdfinterp import PDFResourceManager, PDFPageInterpreter
 from pdfminer.converter import TextConverter
 from pdfminer.layout import LAParams
@@ -30,22 +31,20 @@ LAMBDA_TASK_ROOT = os.environ.get('LAMBDA_TASK_ROOT', os.path.dirname(os.path.ab
 BIN_DIR = os.path.join("/opt", 'bin')
 LIB_DIR = os.path.join("/opt", 'lib')
 
-
-
-
 with NamedTemporaryFile(mode='w', delete=False) as f:
     CATDOCRC_PATH = f.name
     f.write('charset_path = {}\n'.format(os.path.join(LIB_DIR, 'catdoc', 'charsets')))
     f.write('map_path = {}\n'.format(os.path.join(LIB_DIR, 'catdoc', 'charsets')))
-#end with
 
 
-
+# end with
 
 
 def _get_subprocess_output(*args, **kwargs):
     return get_subprocess_output(*args, **kwargs)
-#end def
+
+
+# end def
 
 
 def pdf_to_text(document_path, event, context):
@@ -64,8 +63,9 @@ def pdf_to_text(document_path, event, context):
     text = output.getvalue()
     output.close
     return text
-#end def
 
+
+# end def
 
 
 def doc_to_text(document_path, event, context):
@@ -73,7 +73,8 @@ def doc_to_text(document_path, event, context):
     cmdline = [os.path.join(BIN_DIR, 'antiword'), '-t', '-w', '0', '-m', 'UTF-8', document_path]
 
     try:
-        text = _get_subprocess_output(cmdline, display_output_on_exception=False, shell=False, env=dict(ANTIWORDHOME=os.path.join(LIB_DIR, 'antiword')))
+        text = _get_subprocess_output(cmdline, display_output_on_exception=False, shell=False,
+                                      env=dict(ANTIWORDHOME=os.path.join(LIB_DIR, 'antiword')))
         text = text.decode('utf-8', errors='ignore').strip()
     except CalledProcessError as e:
         print(e)
@@ -85,19 +86,19 @@ def doc_to_text(document_path, event, context):
 
         else:
             text = None
-        #end if
-    #end try
+        # end if
+    # end try
 
     if text is None:  # Fallback to catdoc
         cmdline = [os.path.join(BIN_DIR, 'catdoc'), '-a', document_path]
         text = _get_subprocess_output(cmdline, shell=False, env=dict(CATDOCRC_PATH=CATDOCRC_PATH))
         text = text.decode('utf-8', errors='ignore').strip()
-    #end if
+    # end if
 
     return text
-#end def
 
 
+# end def
 
 
 def docx_to_text(document_path, event, context):
@@ -110,9 +111,12 @@ def docx_to_text(document_path, event, context):
         doc_body = doc.element.body
         blocks = []
         for child in doc_body.iterchildren():
-            if isinstance(child, CT_P): blocks.append(Paragraph(child, doc_body).text)
-            elif isinstance(child, CT_Tbl): blocks.append('\n'.join(' | '.join(cell.text for cell in row.cells) for row in Table(child, doc_body).rows))
-        #end for
+            if isinstance(child, CT_P):
+                blocks.append(Paragraph(child, doc_body).text)
+            elif isinstance(child, CT_Tbl):
+                blocks.append(
+                    '\n'.join(' | '.join(cell.text for cell in row.cells) for row in Table(child, doc_body).rows))
+        # end for
 
         text = '\n\n'.join(blocks).strip()
 
@@ -120,14 +124,16 @@ def docx_to_text(document_path, event, context):
 
     except Exception:
         print("Exception")
-    #end try
+    # end try
 
     # Extract it from the XML
     with ZipFile(document_path) as document_zipfile:
         xml_content = document_zipfile.read('word/document.xml')
 
-    try: from xml.etree.cElementTree import XML
-    except ImportError: from xml.etree.ElementTree import XML
+    try:
+        from xml.etree.cElementTree import XML
+    except ImportError:
+        from xml.etree.ElementTree import XML
 
     tree = XML(xml_content)
 
@@ -140,12 +146,14 @@ def docx_to_text(document_path, event, context):
         texts = [node.text for node in paragraph.getiterator(DOCX_TEXT) if node.text]
         if texts:
             paragraphs.append(''.join(texts))
-    #end for
+    # end for
 
     text = '\n\n'.join(paragraphs)
 
     return text
-#end def
+
+
+# end def
 
 def img_to_text(document_path, event, context):
     os.environ['TESSDATA_PREFIX'] = "/opt/data/tessdata"
@@ -161,17 +169,25 @@ def rtf_to_text(document_path, event, context):
     new_lines = []
     in_header = True
     for line in text.split('\n'):
-        if in_header and line.startswith('###'): continue
+        if in_header and line.startswith('###'):
+            continue
         else:
             new_lines.append(line)
             in_header = False
-        #end if
-    #end for
+        # end if
+    # end for
     text = '\n'.join(new_lines).strip()
     text = re.sub(r'[\x0e-\x1f]', '', text)
 
     return text
-#end def
+
+
+# end def
+
+def jd_to_text(document_path, event, context):
+    print("jd to text")
+    return open(document_path).read().replace('\n','')
+
 
 PARSE_FUNCS = {
     '.doc': doc_to_text,
@@ -181,9 +197,11 @@ PARSE_FUNCS = {
     '.rtf': rtf_to_text,
     '.png': img_to_text,
     '.jpg': img_to_text,
-    '.jpeg': img_to_text
+    '.jpeg': img_to_text,
+    '.jd':jd_to_text
 
 }
+
 
 def extractEmail(text):
     regexEmail = '\S+@\S+'
@@ -196,15 +214,65 @@ def extractPhoneNumber(text):
     phones = re.findall(regexPhone, text)
     return phones
 
+
+def getSimilarityScore(dynamodb, text, metaTag):
+    print("Getting the JD data from DB {0}".format(metaTag))
+    table = dynamodb.Table('resumewordcloudTable')
+    try:
+        response = table.get_item(
+            Key={
+                'name': "resume/JD--"+metaTag+".jd"
+            }
+        )
+        jdText = response['Item']['resumetext']
+        for k, v in jdText.items():
+            jdText[k] = float(v)
+        jdWordList = list(jdText.values())
+        resumeWordList = []
+        for word in jdText:
+            if (word in text):
+                resumeWordList.append(float(text[word]))
+            else:
+                resumeWordList.append(0)
+        from numpy import dot
+        from numpy.linalg import norm
+        cos_sim = dot(jdWordList, resumeWordList) / (norm(jdWordList) * norm(resumeWordList))
+        if math.isnan(cos_sim):
+            return 0
+        return cos_sim
+    except Exception as e:
+        print(e)
+        return 0
+
+
+    return 0
+
+
 def handle(event, context):
-    global logger
+    print("came here")
+    #global logger
+    print(event)
+    #print(context)
     s3 = boto3.resource('s3')
     bucket =event['Records'][0]['s3']['bucket']['name']
+    print("bucket name" + bucket)
+    #bucket = 'testwc-ruhul'
     key =event['Records'][0]['s3']['object']['key']
+    print("key "+ key)
+    #key = 'resume/ruhul_profile.pdf'
     key = unquote_plus(key)
     print("New file : {} uploaded in bucket: {} ".format(key, bucket))
-    tmpfile = '/tmp/'+key[7:];
+    tmpfile = '/tmp/' + key[7:];
     s3.meta.client.download_file(bucket, key, tmpfile)
+    metaTag = 'BLANK';
+    try:
+        response = s3.meta.client.head_object(Bucket=bucket, Key=key)
+        # get file metadata --to get the JD
+        metadataName = 'x-amz-meta-tag'
+        if metadataName in response['ResponseMetadata']['HTTPHeaders']:
+            metaTag = response['ResponseMetadata']['HTTPHeaders'][metadataName]
+    except Exception as err:
+        print(err)
     print('I am done downloading the file in tmp folder ' + tmpfile)
     _, ext = os.path.splitext(tmpfile)  # get format from extension
     ext = ext.lower()
@@ -213,44 +281,48 @@ def handle(event, context):
     print(extract_func)
     if extract_func is None:
         print("No function identified. Unsupported file type")
-    #end if
+    # end if
 
     textractor_results = {}
     try:
         text = extract_func(tmpfile, event, context)
         textractor_results = dict(method=extract_func.__name__, size=len(text), success=True)
         if len(text) == 0: print('<{}> does not contain any content.'.format(tmpfile))
-        #end if
+        # end if
         print("text extracted successfully now generating wordcloud image")
-        stoptextfile = LAMBDA_TASK_ROOT+"/stop-words.txt"
+        stoptextfile = LAMBDA_TASK_ROOT + "/stop-words.txt"
         stopwords = set(STOPWORDS)
-        new_words =open(stoptextfile).read().split()
-        new_stopwords=stopwords.union(new_words)
-        wordcloud = WordCloud(max_font_size=50,  stopwords = new_stopwords, background_color="white").generate(text)
+        new_words = open(stoptextfile).read().split()
+        new_stopwords = stopwords.union(new_words)
+        wordcloud = WordCloud(max_font_size=50, stopwords=new_stopwords, background_color="white").generate(text)
         plt.figure()
         plt.imshow(wordcloud, interpolation="bilinear")
         plt.axis("off")
-        imageFile= key+".png"
+        imageFile = key + ".png"
         imageFile = imageFile[7:]
-        wordcloud.to_file("/tmp/"+imageFile)
+        wordcloud.to_file("/tmp/" + imageFile)
         print("Wordcloud file created {}".format(imageFile))
-        data = open('/tmp/'+imageFile, 'rb')
-        imageFile = "image/"+imageFile
-        s3.Bucket(bucket).put_object(ACL='public-read',Key=imageFile, Body=data)
+        data = open('/tmp/' + imageFile, 'rb')
+        imageFile = "image/" + imageFile
+        s3.Bucket(bucket).put_object(ACL='public-read', Key=imageFile, Body=data)
         print("WordCloud image uploaded succesfully " + imageFile)
         dynamodb = boto3.resource('dynamodb')
         table = dynamodb.Table('resumewordcloudTable')
-        print(table)
-        wordclouddata =  wordcloud.words_
-        for k, v in wordclouddata.items():
-            wordclouddata[k] = str(v)
+        wordclouddata = {}  # wordcloud.words_
+        for k, v in wordcloud.words_.items():
+            wordclouddata[k.lower()] = str(v)
         email = ''.join(extractEmail(text))
         phone = ''.join(extractPhoneNumber(text))
-
-        table.put_item(Item= {'name':key,'resumekey': key,'resumetext': wordclouddata  , 'imagekey': imageFile, 'email':"-"+email, 'phone':'-'+phone})
+        score = getSimilarityScore(dynamodb, wordclouddata, metaTag)
+        table.put_item(Item={'name': key, 'resumekey': key, 'resumetext': wordclouddata, 'imagekey': imageFile,
+                             'email': "-" + email, 'phone': '-' + phone, 'metatag': metaTag, 'score': str(score)})
         print("data updated in dynamo table")
 
     except Exception as e:
         print('Extraction exception {} for <{}>'.format(tmpfile, e))
 
-#end def
+
+# end def
+
+
+

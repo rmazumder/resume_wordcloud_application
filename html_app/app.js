@@ -1,6 +1,3 @@
-
-
-
 var app = angular.module("resumeWordCloud", []);
 app.filter("toArray", function() {
     return function(obj) {
@@ -27,7 +24,7 @@ app.filter("filtertextRegex", function() {
 app.controller("myCtrl", function($scope, $http, $timeout, $filter) {
     $scope.albumBucketName = 'testwc-ruhul';
     var bucketRegion = 'us-east-1';
-    var IdentityPoolId = 'XXXX';
+    var IdentityPoolId = 'XXXXXXXXXXX';
     $scope.showAlert = true;
     $scope.alertMessage = {
         message: 'Welcome to word cloud resume application'
@@ -43,10 +40,8 @@ app.controller("myCtrl", function($scope, $http, $timeout, $filter) {
     $scope.imageData = {};
     $scope.textData = {};
     $scope.dispArray = [];
+    $scope.jdlist = {"-all-":{"name":"-all-","value":""}};
 
-
-
-    //$scope.resume = ["sdss","sds"]
     var s3 = new AWS.S3({
         apiVersion: '2006-03-01',
         params: {
@@ -55,9 +50,10 @@ app.controller("myCtrl", function($scope, $http, $timeout, $filter) {
     });
 
 
-    function listResumeBucket() {
+    $scope.listResumeBucket = function() {
         $scope.alertMessage = {
-            message: 'Loading Resumes from Server ....'
+            message: 'Loading Resumes from Server ....',
+            showspinner: true
         }
 
         var params = {
@@ -70,23 +66,24 @@ app.controller("myCtrl", function($scope, $http, $timeout, $filter) {
 
                 for (i = 0; i < data.Contents.length; i++) {
                     key = data.Contents[i]["Key"]
+                    if (key.endsWith(".jd")) {
+                        continue;
+                    }
                     if (key === "resume/")
                         continue;
                     key = key.substring(7);
                     $scope.dispData[key] = data.Contents[i];
                 }
-                //$scope.dispArray = $filter('toArray')($scope.dispData);
-                //console.log($scope.dispArray)
                 $scope.$apply(); // successful response
-                dynamo();
+                $scope.dynamo();
+                $scope.listImageBucket();
             }
         })
     }
 
-    function listImageBucket() {
+    $scope.listImageBucket = function() {
         var params = {
             Prefix: 'image',
-            //MaxKeys: 2
         };
         s3.listObjects(params, function(err, data) {
             if (err) console.log(err, err.stack); // an error occurred
@@ -117,18 +114,58 @@ app.controller("myCtrl", function($scope, $http, $timeout, $filter) {
         }
     }
 
-    listResumeBucket();
-    listImageBucket();
+    $scope.listResumeBucket();
 
-    $scope.uploadFile = function() {
+    $scope.deletejd = function(key) {
+      s3key = "resume/JD--"+key+".jd"
+      console.log(s3key)
 
-        var file = document.getElementById('myresume').files[0]
-        $scope.alertMessage = {
-            message: 'Uploading new file to server: ' + file.name + ' ......'
+        s3.deleteObject({
+            Key: s3key
+        }, function(err, data) {
+            if (err) {
+                $scope.alertMessage = {
+                    message: 'Error deleting the file'
+                }
+                $timeout($scope.hideAlert, 3000);
+            } else {
+                console.log("calling dynamo")
+                $scope.listResumeBucket();
+
+            }
+
+        });
+    }
+
+    $scope.deleteresume = function(key, dispKey) {
+      $scope.alertMessage = {
+            message: 'Deleting file from server: ' + key,
+            showspinner: true
         }
+        s3.deleteObject({
+            Key: key
+        }, function(err, data) {
+            if (err) {
+                $scope.alertMessage = {
+                    message: 'Error deleting the file'
+                }
+                $timeout($scope.hideAlert, 3000);
+            } else {
+                delete $scope.dispData[dispKey];
+                $scope.alertMessage = {
+                    message: 'File deleted Successfully'
+                }
+                $timeout($scope.hideAlert, 3000);
+            }
 
-        var fileName = file.name;
+        });
+    }
+
+    $scope.createjd = function() {
+        var file = document.getElementById('jdfile').files[0]
+        var fileName = "JD--" + $scope.jdName + ".jd";
         var albumPhotosKey = encodeURIComponent("resume") + '/';
+
         var photoKey = albumPhotosKey + fileName;
         s3.upload({
             Key: photoKey,
@@ -145,14 +182,57 @@ app.controller("myCtrl", function($scope, $http, $timeout, $filter) {
             $scope.alertMessage = {
                 message: 'File uploaded Successfully'
             }
-            listResumeBucket();
-            listImageBucket();
+            $('#jdmodal').modal('toggle');
+            $scope.listResumeBucket();
+
+        });
+    }
+    $scope.uploadFile = function() {
+
+        if ($scope.selectedjd === undefined) {
+            $scope.showjdalert = true;
+            return;
+        }
+        tagname = $scope.selectedjd.name;
+        if (tagname === "-all-") {
+            $scope.showjdalert = true;
+            return;
+        }
+        var file = document.getElementById('myresume').files[0]
+        $scope.alertMessage = {
+            message: 'Uploading new file to server: ' + file.name,
+            showspinner: true
+        }
+
+        var fileName = file.name;
+        var albumPhotosKey = encodeURIComponent("resume") + '/';
+        var photoKey = albumPhotosKey + fileName;
+        s3.upload({
+            Key: photoKey,
+            Body: file,
+            ACL: 'public-read',
+            Metadata: {
+                'tag': tagname,
+            }
+        }, function(err, data) {
+            if (err) {
+                $scope.alertMessage = {
+                    message: 'Error uploading the file'
+                }
+                $timeout($scope.hideAlert, 3000);
+
+            }
+            $scope.alertMessage = {
+                message: 'File uploaded Successfully'
+            }
+            $scope.listResumeBucket();
+
 
         });
 
     };
 
-    function dynamo() {
+    $scope.dynamo = function() {
         var ddb = new AWS.DynamoDB({
             apiVersion: '2012-08-10'
         });
@@ -163,7 +243,7 @@ app.controller("myCtrl", function($scope, $http, $timeout, $filter) {
                     S: 'resume'
                 }
             },
-            ProjectionExpression: 'resumekey, resumetext, imagekey, email, phone',
+            ProjectionExpression: 'resumekey, resumetext, imagekey, email, phone, metatag, score',
             FilterExpression: 'begins_with (resumekey, :topic)',
             TableName: 'resumewordcloudTable'
         };
@@ -172,6 +252,7 @@ app.controller("myCtrl", function($scope, $http, $timeout, $filter) {
             if (err) {
                 console.log("Error", err);
             } else {
+
                 data.Items.forEach(function(element, index, array) {
                     key = element.resumekey.S.substring(7);
                     $scope.textData[key] = element.resumetext.M;
@@ -179,14 +260,29 @@ app.controller("myCtrl", function($scope, $http, $timeout, $filter) {
                     angular.forEach(element.resumetext.M, function(value, key) {
                         textString = textString + " " + key;
                     });
-                    if($scope.dispData[key]){
-                      $scope.dispData[key]['textData'] = textString;
-                      $scope.dispData[key]['email'] = element.email.S;
-                      $scope.dispData[key]['phone'] = element.phone.S;
+                    if (key.endsWith(".jd")) {
+                        key = key.substring(4, key.lastIndexOf('.'))
+                        jd = {}
+                        jd['name'] = key;
+                        jd['text'] = textString;
+                        jd['value'] = key;
+                        jd['image'] = element.imagekey.S;
+                        $scope.jdlist[key] = jd;
+                    } else if ($scope.dispData[key]) {
+                        $scope.dispData[key]['textData'] = textString;
+                        $scope.dispData[key]['email'] = element.email.S;
+                        $scope.dispData[key]['phone'] = element.phone.S;
+                        if (element.metatag === undefined)
+                            $scope.dispData[key]['tag'] = 'BLANK'
+                        else {
+                            $scope.dispData[key]['tag'] = element.metatag.S;
+                        }
+                        if (element.score != undefined)
+                            $scope.dispData[key]['score'] = parseFloat(element.score.S) * 100;
                     }
                 });
                 $scope.$apply();
-
+                console.log($scope.jdlist)
             }
         })
     };
