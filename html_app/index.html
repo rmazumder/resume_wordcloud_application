@@ -16,14 +16,46 @@
 						<script src="./app.js"></script>
 						<script>
 
-    $(document).ready(function(){
-      $('[data-toggle="popover"]').popover();
-      });
-       //listBucket();
-    </script>
+            $(document).ready(function(){
+              $('[data-toggle="popover"]').popover();
+              });
+               //listBucket();
+            </script>
+
 					</head>
 					<body>
 						<div ng-app="resumeWordCloud" ng-controller="myCtrl">
+              <nav class="navbar navbar-expand-md navbar-dark bg-dark">
+                <div class="navbar-collapse collapse w-100 order-1 order-md-0 dual-collapse2">
+                    <ul class="navbar-nav mr-auto">
+                        <li class="nav-item active">
+                            <a class="nav-link" href="#"></a>
+                        </li>
+                        <li class="nav-item">
+
+                        </li>
+
+                    </ul>
+                </div>
+                <div class="mx-auto order-0">
+                    <a class="navbar-brand mx-auto" href="#">Resume Analyser</a>
+                    <button class="navbar-toggler" type="button" data-toggle="collapse" data-target=".dual-collapse2">
+                        <span class="navbar-toggler-icon"></span>
+                    </button>
+                </div>
+                <div class="navbar-collapse collapse w-100 order-3 dual-collapse2">
+                    <ul class="navbar-nav ml-auto">
+                        <li class="nav-item">
+                          <a class="nav-link" href="#"></a>
+                        </li>
+                        <li class="nav-item">
+                          <a class="nav-link" href="#"></a>
+                        </li>
+                    </ul>
+                </div>
+            </nav>
+
+
 							<div class="alert alert-success fade show" ng-show="showAlert" role="alert">
 								<strong>Message!</strong> {{alertMessage.message}}
 								<i class="fa fa-spinner fa-spin" style="font-size:24px" ng-if="alertMessage.showspinner"></i>
@@ -32,7 +64,7 @@
 								<div class="col-md-6">
 									<div style="position:relative;">
 										<a class='btn btn-primary' href='javascript:;'>
-                      Choose File to upload...
+                      Choose resume to upload <i class="fa fa-plus"></i>
 
 											<input id="myresume" type="file"
                         style='position:absolute;z-index:2;top:0;left:0;filter: alpha(opacity=0);-ms-filter:"progid:DXImageTransform.Microsoft.Alpha(Opacity=0)";opacity:0;background-color:transparent;color:transparent;'
@@ -41,7 +73,7 @@
                       &nbsp;
                       &nbsp;
 											<span class='label label-info' id="upload-file-info"></span>
-											<button  type="button" ng-click = "uploadFile()" class="btn btn-primary">Upload Resume
+											<button  type="button" ng-click = "uploadFile()" class="btn btn-primary">Upload
 												<i class="fa fa-upload"></i>
 											</button>
 										</div>
@@ -144,7 +176,7 @@
 														<div class="row">
 															<div class="col-sm-6 col-md-4 col-lg-3" ng-repeat="x in dispData  | toArray | orderBy: '-LastModified' | filtertextRegex:searchTextJD | filter:searchText | filter:selectedjd.value">
 																<div class="card" >
-																	<img class="card-img-top" ng-src="{{bucketUrl}}{{imageData[x.KeyID].Key}}" alt="Click Refresh button if image is not loaded">
+																	<img class="card-img-top" ng-src="{{x.wordcloudImage}}" alt="Click Refresh button if image is not loaded">
 																		<div class="card-body">
 																			<b class="card-title ">{{x.KeyID}}</b>
 																			<button type="button" class="btn btn-info float-right">
@@ -170,5 +202,6 @@
 																</div>
 															</div>
 														</div>
+
 													</body>
 												</html>
