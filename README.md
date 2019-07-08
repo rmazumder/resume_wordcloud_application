@@ -1,5 +1,5 @@
-# HR Resume analyser using word cloud
-It is a HR application that converts resume in wordcloud images and extract metadata from resume
+#  Resume analyser using word cloud
+It is a web application that converts resume in wordcloud images and extract metadata from resume and generates similarity score between resume and Job description.
 
 
 Technology stack used:
@@ -11,6 +11,7 @@ AWS LAMBDA : python function for text extraction and wordcloud image generation.
 S3 Bucket for static hosting of the html files and resume/wordcloud images file storage
 dynamoDB to store the metadata data for further processing
 UI :  aws-sdk for javascript and angular js for UI
+Does simple cosine similarity to generate the score.
 
 
 Application pipeline : 
