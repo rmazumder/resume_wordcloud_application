@@ -1,10 +1,30 @@
-var app = angular.module("resumeWordCloud", []);
+var app = angular.module('resumeWordCloud', ['ngSanitize', 'ngCsv']);
 app.filter("toArray", function() {
     return function(obj) {
         var result = [];
         angular.forEach(obj, function(val, key) {
             val.KeyID = key
             result.push(val);
+        });
+        return result;
+    };
+});
+
+app.filter("tocsvformat", function() {
+    return function(obj, headermap) {
+        var result = [];
+        angular.forEach(obj, function(val, key) {
+          updateValue = {};
+          angular.forEach(headermap, function(v,k){
+              if(val[k] === undefined){
+                  updateValue[v] = " "
+              } else {
+                  updateValue[v] = val[k]
+              }
+          });
+
+
+              result.push(updateValue);
         });
         return result;
     };
@@ -24,7 +44,7 @@ app.filter("filtertextRegex", function() {
 app.controller("myCtrl", function($scope, $http, $timeout, $filter) {
     $scope.albumBucketName = 'testwc-ruhul';
     var bucketRegion = 'us-east-1';
-    var IdentityPoolId = 'XXXXXXXXXXX';
+    var IdentityPoolId = 'XXXXXXXXXXXXXXXXXXX';
     $scope.showAlert = true;
     $scope.alertMessage = {
         message: 'Welcome to word cloud resume application'
@@ -35,20 +55,21 @@ app.controller("myCtrl", function($scope, $http, $timeout, $filter) {
             IdentityPoolId: IdentityPoolId
         })
     });
-
+    $scope.csvheaderMap={"KeyID":"NAME", "email":"EMAIL","phone":"PHONE","tag":"TAG","score":"SCORE", "LastModified":"UPLOADED-ON","matched":"matched"}
+    $scope.getCSVHeader =  function(){
+      return Object.values($scope.csvheaderMap);
+    }
     $scope.dispData = {};
     $scope.imageData = {};
     $scope.textData = {};
     $scope.dispArray = [];
     $scope.jdlist = {"-all-":{"name":"-all-","value":""}};
-
     var s3 = new AWS.S3({
         apiVersion: '2006-03-01',
         params: {
             Bucket: $scope.albumBucketName
         }
     });
-
 
     $scope.listResumeBucket = function() {
         $scope.alertMessage = {
@@ -118,7 +139,6 @@ app.controller("myCtrl", function($scope, $http, $timeout, $filter) {
 
     $scope.deletejd = function(key) {
       s3key = "resume/JD--"+key+".jd"
-      console.log(s3key)
 
         s3.deleteObject({
             Key: s3key
@@ -129,7 +149,6 @@ app.controller("myCtrl", function($scope, $http, $timeout, $filter) {
                 }
                 $timeout($scope.hideAlert, 3000);
             } else {
-                console.log("calling dynamo")
                 $scope.listResumeBucket();
 
             }
@@ -243,7 +262,7 @@ app.controller("myCtrl", function($scope, $http, $timeout, $filter) {
                     S: 'resume'
                 }
             },
-            ProjectionExpression: 'resumekey, resumetext, imagekey, email, phone, metatag, score',
+            ProjectionExpression: 'resumekey, resumetext, imagekey, email, phone, metatag, score, matched',
             FilterExpression: 'begins_with (resumekey, :topic)',
             TableName: 'resumewordcloudTable'
         };
@@ -252,7 +271,6 @@ app.controller("myCtrl", function($scope, $http, $timeout, $filter) {
             if (err) {
                 console.log("Error", err);
             } else {
-
                 data.Items.forEach(function(element, index, array) {
                     key = element.resumekey.S.substring(7);
                     $scope.textData[key] = element.resumetext.M;
@@ -270,6 +288,8 @@ app.controller("myCtrl", function($scope, $http, $timeout, $filter) {
                         $scope.jdlist[key] = jd;
                     } else if ($scope.dispData[key]) {
                         $scope.dispData[key]['textData'] = textString;
+                        $scope.dispData[key]['matched'] = JSON.stringify(element.matched.M);
+
                         $scope.dispData[key]['email'] = element.email.S;
                         $scope.dispData[key]['phone'] = element.phone.S;
                         if (element.metatag === undefined)
@@ -281,8 +301,14 @@ app.controller("myCtrl", function($scope, $http, $timeout, $filter) {
                             $scope.dispData[key]['score'] = parseFloat(element.score.S) * 100;
                     }
                 });
+
+                if($scope.selectedjd === undefined){
+                  $scope.selectedjd = $scope.jdlist["-all-"];
+                } else {
+                  $scope.selectedjd = $scope.jdlist[$scope.selectedjd.name];
+                }
                 $scope.$apply();
-                console.log($scope.jdlist)
+
             }
         })
     };
