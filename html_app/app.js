@@ -57,19 +57,18 @@ app.filter("filtertextRegex", function ()
 });
 app.controller("myCtrl", function ($scope, $http, $timeout, $filter)
 {
+
 	$scope.albumBucketName = 'testwc-ruhul';
-	var bucketRegion = 'us-east-1';
-	var IdentityPoolId = 'XXXXXXXX';
 	$scope.showAlert = true;
 	$scope.alertMessage = {
 		message: 'Welcome to word cloud resume application'
 	}
 	AWS.config.update(
 	{
-		region: bucketRegion,
+		region: BUCKET_REGION,
 		credentials: new AWS.CognitoIdentityCredentials(
 		{
-			IdentityPoolId: IdentityPoolId
+			IdentityPoolId: IDENTIY_POOL_ID
 		})
 	});
 	$scope.csvheaderMap = {
