@@ -63,6 +63,16 @@ app.controller("myCtrl", function ($scope, $http, $timeout, $filter)
 	$scope.alertMessage = {
 		message: 'Welcome to word cloud resume application'
 	}
+  function makeid(length) {
+   var result           = '';
+   var characters       = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+   var charactersLength = characters.length;
+   for ( var i = 0; i < length; i++ ) {
+      result += characters.charAt(Math.floor(Math.random() * charactersLength));
+   }
+   return result;
+  }
+
 	AWS.config.update(
 	{
 		region: BUCKET_REGION,
@@ -72,7 +82,7 @@ app.controller("myCtrl", function ($scope, $http, $timeout, $filter)
 		})
 	});
 	$scope.csvheaderMap = {
-		"KeyID": "NAME",
+		"displaykey": "NAME",
 		"email": "EMAIL",
 		"phone": "PHONE",
 		"tag": "JD Name",
@@ -82,10 +92,10 @@ app.controller("myCtrl", function ($scope, $http, $timeout, $filter)
     "resumeImage": "Resume link",
     "wordcloudImage": "WordCloud Image link"
 	}
-	$scope.getCSVHeader = function ()
-	{
+	$scope.getCSVHeader = function (){
 		return Object.values($scope.csvheaderMap);
 	}
+
 	$scope.dispData = {};
 	$scope.imageData = {};
 	$scope.textData = {};
@@ -106,8 +116,7 @@ app.controller("myCtrl", function ($scope, $http, $timeout, $filter)
 		}
 	});
 
-	$scope.listResumeBucket = function ()
-	{
+	$scope.listResumeBucket = function (){
 		$scope.alertMessage = {
 			message: 'Loading Resumes from Server ....',
 			showspinner: true
@@ -138,44 +147,12 @@ app.controller("myCtrl", function ($scope, $http, $timeout, $filter)
 				}
 				$scope.$apply(); // successful response
 				$scope.dynamo();
-				$scope.listImageBucket();
 			}
 		})
 	}
 
-	$scope.listImageBucket = function ()
-	{
-		var params = {
-			Prefix: 'image',
-		};
-		s3.listObjects(params, function (err, data)
-		{
-			if (err) console.log(err, err.stack); // an error occurred
-			else
-			{
-				var href = this.request.httpRequest.endpoint.href;
-				$scope.bucketUrl = href + $scope.albumBucketName + '/';
-				for (i = 0; i < data.Contents.length; i++)
-				{
-					key = data.Contents[i]["Key"]
-					if (key === "image/")
-						continue;
 
-					key = key.substring(6, key.lastIndexOf('.'))
-					$scope.imageData[key] = data.Contents[i];
-
-				}
-				$scope.alertMessage = {
-					message: 'Data Refreshed'
-				}
-				$scope.$apply(); // successful response
-				$timeout($scope.hideAlert, 3000);
-			}
-		})
-	}
-
-	$scope.hideAlert = function ()
-	{
+	$scope.hideAlert = function (){
 		$scope.alertMessage = {
 			message: 'Welcome to WordCloud Resume Application. Please choose a file and upload Resume. Current supported formats are pdf, doc, docx and image file'
 		}
@@ -183,8 +160,7 @@ app.controller("myCtrl", function ($scope, $http, $timeout, $filter)
 
 	$scope.listResumeBucket();
 
-	$scope.deletejd = function (key)
-	{
+	$scope.deletejd = function (key) {
 		s3key = "resume/JD--" + key + ".jd"
 
 		s3.deleteObject(
@@ -192,15 +168,12 @@ app.controller("myCtrl", function ($scope, $http, $timeout, $filter)
 			Key: s3key
 		}, function (err, data)
 		{
-			if (err)
-			{
+			if (err){
 				$scope.alertMessage = {
 					message: 'Error deleting the file'
 				}
 				$timeout($scope.hideAlert, 3000);
-			}
-			else
-			{
+			} else {
 				$scope.listResumeBucket();
 
 			}
@@ -208,8 +181,7 @@ app.controller("myCtrl", function ($scope, $http, $timeout, $filter)
 		});
 	}
 
-	$scope.deleteresume = function (key, dispKey)
-	{
+	$scope.deleteresume = function (key, dispKey) {
 		$scope.alertMessage = {
 			message: 'Deleting file from server: ' + key,
 			showspinner: true
@@ -219,15 +191,12 @@ app.controller("myCtrl", function ($scope, $http, $timeout, $filter)
 			Key: key
 		}, function (err, data)
 		{
-			if (err)
-			{
+			if (err) {
 				$scope.alertMessage = {
 					message: 'Error deleting the file'
 				}
 				$timeout($scope.hideAlert, 3000);
-			}
-			else
-			{
+			} else {
 				delete $scope.dispData[dispKey];
 				$scope.alertMessage = {
 					message: 'File deleted Successfully'
@@ -238,8 +207,7 @@ app.controller("myCtrl", function ($scope, $http, $timeout, $filter)
 		});
 	}
 
-	$scope.createjd = function ()
-	{
+	$scope.createjd = function () {
 		var file = document.getElementById('jdfile').files[0]
 		var fileName = "JD--" + $scope.jdName + ".jd";
 		var albumPhotosKey = encodeURIComponent("resume") + '/';
@@ -252,8 +220,7 @@ app.controller("myCtrl", function ($scope, $http, $timeout, $filter)
 			ACL: 'public-read'
 		}, function (err, data)
 		{
-			if (err)
-			{
+			if (err) {
 				$scope.alertMessage = {
 					message: 'Error uploading the file'
 				}
@@ -268,17 +235,14 @@ app.controller("myCtrl", function ($scope, $http, $timeout, $filter)
 
 		});
 	}
-	$scope.uploadFile = function ()
-	{
+	$scope.uploadFile = function () {
 
-		if ($scope.selectedjd === undefined)
-		{
+		if ($scope.selectedjd === undefined) {
 			$scope.showjdalert = true;
 			return;
 		}
 		tagname = $scope.selectedjd.name;
-		if (tagname === "-all-")
-		{
+		if (tagname === "-all-") {
 			$scope.showjdalert = true;
 			return;
 		}
@@ -288,7 +252,7 @@ app.controller("myCtrl", function ($scope, $http, $timeout, $filter)
 			showspinner: true
 		}
 
-		var fileName = file.name;
+		var fileName = "WCR-" + makeid(5)+file.name;
 		var albumPhotosKey = encodeURIComponent("resume") + '/';
 		var photoKey = albumPhotosKey + fileName;
 		s3.upload(
@@ -302,8 +266,7 @@ app.controller("myCtrl", function ($scope, $http, $timeout, $filter)
 			}
 		}, function (err, data)
 		{
-			if (err)
-			{
+			if (err) {
 				$scope.alertMessage = {
 					message: 'Error uploading the file'
 				}
@@ -320,8 +283,7 @@ app.controller("myCtrl", function ($scope, $http, $timeout, $filter)
 
 	};
 
-	$scope.dynamo = function ()
-	{
+	$scope.dynamo = function () {
 		var ddb = new AWS.DynamoDB(
 		{
 			apiVersion: '2012-08-10'
@@ -340,16 +302,12 @@ app.controller("myCtrl", function ($scope, $http, $timeout, $filter)
 			TableName: DYNAMO_DB_TABLE
 		};
 
-		ddb.scan(params, function (err, data)
-		{
-			if (err)
-			{
+		ddb.scan(params, function (err, data) {
+			if (err) {
 				console.log("Error", err);
 			}
-			else
-			{
-				data.Items.forEach(function (element, index, array)
-				{
+			else {
+				data.Items.forEach(function (element, index, array){
 					key = element.resumekey.S.substring(7);
 					$scope.textData[key] = element.resumetext.M;
 					textString = "";
@@ -357,8 +315,7 @@ app.controller("myCtrl", function ($scope, $http, $timeout, $filter)
 					{
 						textString = textString + " " + key;
 					});
-					if (key.endsWith(".jd"))
-					{
+					if (key.endsWith(".jd")){
 						key = key.substring(4, key.lastIndexOf('.'))
 						jd = {}
 						jd['name'] = key;
@@ -366,9 +323,12 @@ app.controller("myCtrl", function ($scope, $http, $timeout, $filter)
 						jd['value'] = key;
 						jd['image'] = element.imagekey.S;
 						$scope.jdlist[key] = jd;
-					}
-					else if ($scope.dispData[key])
-					{
+					}	else if ($scope.dispData[key]) {
+            var displayKey = key;
+            if(key.startsWith("WCR-")){
+              displayKey = displayKey.substring(9);
+            }
+            $scope.dispData[key]['displaykey'] = displayKey;
 						$scope.dispData[key]['textData'] = textString;
 						$scope.dispData[key]['matched'] = JSON.stringify(element.matched.M);
 						$scope.dispData[key]['email'] = element.email.S;
@@ -376,26 +336,29 @@ app.controller("myCtrl", function ($scope, $http, $timeout, $filter)
             $scope.dispData[key]['resumeImage'] = $scope.bucketUrl + element.resumekey.S;
             $scope.dispData[key]['wordcloudImage'] = $scope.bucketUrl + element.imagekey.S;
 
-						if (element.metatag === undefined)
+						if (element.metatag === undefined) {
 							$scope.dispData[key]['tag'] = 'BLANK'
-						else
-						{
+						} else {
 							$scope.dispData[key]['tag'] = element.metatag.S;
 						}
-						if (element.score != undefined)
+						if (element.score != undefined) {
 							$scope.dispData[key]['score'] = parseFloat(element.score.S) * 100;
+            }
 					}
 				});
 
-				if ($scope.selectedjd === undefined)
-				{
+				if ($scope.selectedjd === undefined) {
 					$scope.selectedjd = $scope.jdlist["-all-"];
 				}
-				else
-				{
+				else {
 					$scope.selectedjd = $scope.jdlist[$scope.selectedjd.name];
 				}
-				$scope.$apply();
+
+        $scope.alertMessage = {
+          message: 'Data Refreshed'
+        }
+        $scope.$apply(); // successful response
+        $timeout($scope.hideAlert, 3000);
 			}
 		})
 	};
