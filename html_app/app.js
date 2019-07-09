@@ -58,7 +58,7 @@ app.filter("filtertextRegex", function ()
 app.controller("myCtrl", function ($scope, $http, $timeout, $filter)
 {
 
-	$scope.albumBucketName = 'testwc-ruhul';
+	$scope.albumBucketName = RESUME_BUCKET;
 	$scope.showAlert = true;
 	$scope.alertMessage = {
 		message: 'Welcome to word cloud resume application'
@@ -337,7 +337,7 @@ app.controller("myCtrl", function ($scope, $http, $timeout, $filter)
 			},
 			ProjectionExpression: 'resumekey, resumetext, imagekey, email, phone, metatag, score, matched',
 			FilterExpression: 'begins_with (resumekey, :topic)',
-			TableName: 'resumewordcloudTable'
+			TableName: DYNAMO_DB_TABLE
 		};
 
 		ddb.scan(params, function (err, data)

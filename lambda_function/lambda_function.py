@@ -28,6 +28,7 @@ from urllib.parse import unquote_plus
 from utils import get_subprocess_output
 
 LAMBDA_TASK_ROOT = os.environ.get('LAMBDA_TASK_ROOT', os.path.dirname(os.path.abspath(__file__)))
+DYNAMODB_TABLE = os.environ.get('DYNAMO_DB_TABLE',"resume-metadata-prod")
 BIN_DIR = os.path.join("/opt", 'bin')
 LIB_DIR = os.path.join("/opt", 'lib')
 
@@ -219,9 +220,8 @@ def extractPhoneNumber(text):
     return ' / '.join(ph)
 
 
-def getSimilarityScore(dynamodb, text, metaTag):
+def getSimilarityScore(table, text, metaTag):
     print("Getting the JD data from DB {0}".format(metaTag))
-    table = dynamodb.Table('resumewordcloudTable')
     try:
         response = table.get_item(
             Key={
@@ -255,7 +255,7 @@ def getSimilarityScore(dynamodb, text, metaTag):
 
 
 def handle(event, context):
-    print("came here")
+    print("Event Started")
     #global logger
     print(event)
     #print(context)
@@ -313,7 +313,8 @@ def handle(event, context):
         s3.Bucket(bucket).put_object(ACL='public-read', Key=imageFile, Body=data)
         print("WordCloud image uploaded succesfully " + imageFile)
         dynamodb = boto3.resource('dynamodb')
-        table = dynamodb.Table('resumewordcloudTable')
+        print("Dynamo table " + DYNAMODB_TABLE)
+        table = dynamodb.Table(DYNAMODB_TABLE)
         wordclouddata = {}  # wordcloud.words_
         for k, v in wordcloud.words_.items():
             wordclouddata[k.lower()] = str(v)
@@ -323,9 +324,22 @@ def handle(event, context):
         phone = extractPhoneNumber(text)
         if(phone == ""):
             phone ="-"
-        score, commonwords = getSimilarityScore(dynamodb, wordclouddata, metaTag)
-        table.put_item(Item={'name': key, 'resumekey': key, 'resumetext': wordclouddata, 'imagekey': imageFile,
-                             'email': email, 'phone': phone, 'metatag': metaTag, 'score': str(score), "matched" : commonwords, "text" :text})
+        score, commonwords = getSimilarityScore(table, wordclouddata, metaTag)
+        item = {}
+        item['name'] =  key
+        item['resumekey'] = key
+        item['resumetext'] = wordclouddata
+        item['imagekey'] = imageFile
+        if(email !=""):
+            item['email'] = email
+        if(phone != ""):
+            item['phone'] = phone
+        item['metatag'] = metaTag
+        item['score'] = str(score)
+        if(commonwords !=""):
+            item['matched'] = commonwords
+        item['text'] = text
+        table.put_item(Item = item)                      
         print("data updated in dynamo table")
 
     except Exception as e:
@@ -333,6 +347,7 @@ def handle(event, context):
 
 
 # end def
+
 
 
 
