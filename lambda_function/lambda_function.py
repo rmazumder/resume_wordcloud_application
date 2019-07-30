@@ -29,6 +29,8 @@ from utils import get_subprocess_output
 
 LAMBDA_TASK_ROOT = os.environ.get('LAMBDA_TASK_ROOT', os.path.dirname(os.path.abspath(__file__)))
 DYNAMODB_TABLE = os.environ.get('DYNAMO_DB_TABLE',"resume-metadata-prod")
+SNS_TOPIC = os.environ.get('SNS_TOPIC',"arn:aws:sns:us-east-1:411797132158:dynamodb")
+
 BIN_DIR = os.path.join("/opt", 'bin')
 LIB_DIR = os.path.join("/opt", 'lib')
 
@@ -253,6 +255,19 @@ def getSimilarityScore(table, text, metaTag):
         print(e)
         return 0,""
 
+def triggerSNSMessage(key):
+    print("SNS message publishing for topic {0} with message {1}".format(SNS_TOPIC, key))
+    try:
+        sns = boto3.client('sns')
+        # Publish a simple message to the specified SNS topic
+        response = sns.publish(
+            TopicArn=SNS_TOPIC,    
+            Message=key,    
+        )
+    except Exception as e:
+        print(e)
+        pass
+
 
 def handle(event, context):
     print("Event Started")
@@ -339,7 +354,8 @@ def handle(event, context):
         if(commonwords !=""):
             item['matched'] = commonwords
         item['text'] = text
-        table.put_item(Item = item)                      
+        table.put_item(Item = item)
+        triggerSNSMessage(key)                      
         print("data updated in dynamo table")
 
     except Exception as e:
